@@ -5,5 +5,6 @@ add_compile_options(
     -Werror=all -Werror=extra
 )
 
+add_subdirectory(driver)
 add_subdirectory(watcher)
 add_subdirectory(extra-clicker)

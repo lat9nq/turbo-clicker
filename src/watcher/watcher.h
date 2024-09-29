@@ -4,6 +4,11 @@
 #include <memory>
 #include <stop_token>
 #include <thread>
+
+namespace Driver {
+class Driver;
+}
+
 namespace Watcher {
 
 enum class Button {
@@ -20,7 +25,7 @@ enum class Button {
 
 class Watcher {
   public:
-    Watcher();
+    explicit Watcher(Driver::Driver &driver);
     virtual ~Watcher();
 
     void Start();
@@ -32,6 +37,8 @@ class Watcher {
     virtual void ReadInput(Button &button, int &value) = 0;
 
     void Worker(std::stop_token stoken);
+
+    Driver::Driver &driver;
 
     std::stop_source stop;
     std::unique_ptr<std::jthread> thread;

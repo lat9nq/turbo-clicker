@@ -1,5 +1,6 @@
 #include "watcher/event.h"
 
+#include "driver/driver.h"
 #include "watcher/watcher.h"
 #include <cerrno>
 #include <cstdio>
@@ -8,7 +9,8 @@
 #include <unistd.h>
 
 namespace Watcher {
-EventWatcher::EventWatcher(const char *device) : Watcher(), device_name{device} {
+EventWatcher::EventWatcher(Driver::Driver &driver, const char *device)
+    : Watcher(driver), device_name{device} {
     fd = open(device_name, O_RDONLY);
     if (fd == -1) {
         int err = errno;

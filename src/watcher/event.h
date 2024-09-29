@@ -3,10 +3,14 @@
 #include "watcher/watcher.h"
 #include <atomic>
 
+namespace Driver {
+class Driver;
+}
+
 namespace Watcher {
 class EventWatcher : public Watcher {
   public:
-    EventWatcher(const char *device);
+    explicit EventWatcher(Driver::Driver &driver, const char *device);
     ~EventWatcher();
 
     bool Valid() const;

@@ -1,10 +1,12 @@
 #include "watcher/watcher.h"
+#include "driver/driver.h"
 
 #include <stop_token>
 #include <thread>
 
 namespace Watcher {
-Watcher::Watcher() = default;
+Watcher::Watcher(Driver::Driver &driver_) : driver{driver_} {
+}
 Watcher::~Watcher() = default;
 
 void Watcher::Start() {
@@ -20,7 +22,7 @@ void Watcher::Worker(std::stop_token stoken) {
         printf("button %d value %d\n", static_cast<int>(button), value);
 
         if (button == Button::Middle) {
-            // Driver.Down();
+            driver.Update(value);
         }
     }
 }
