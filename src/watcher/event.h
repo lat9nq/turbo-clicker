@@ -1,6 +1,7 @@
 #pragma once
 
 #include "watcher/watcher.h"
+#include <atomic>
 
 namespace Watcher {
 class EventWatcher : public Watcher {
