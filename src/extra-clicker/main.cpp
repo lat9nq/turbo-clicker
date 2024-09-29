@@ -1,28 +1,32 @@
 #include "driver/driver.h"
 #include "driver/uinput.h"
 #include "watcher/event.h"
+#include "watcher/watcher.h"
 #include <getopt.h>
 #include <memory>
 #include <unistd.h>
 
+constexpr struct option longopts[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"burst", required_argument, nullptr, 'b'},
+    {"rate", required_argument, nullptr, 'r'},
+    {"delay", required_argument, nullptr, 'd'},
+    {"hold-delay", required_argument, nullptr, 'o'},
+    {"key-bind", required_argument, nullptr, 'k'},
+    {nullptr, 0, nullptr, 0},
+};
+
+constexpr char const *optstring = "hb:r:d:o:k:"; // TODO: process watch
+
 int main(int argc, char *argv[]) {
     const char *filename;
-    const char *optstring = "hb:r:d:o:"; // TODO: keybind, process watch
     int c;
 
     int burst_length{};
     int rate{};
     int delay{};
     int hold_delay{};
-
-    const struct option longopts[] = {
-        {"help", no_argument, nullptr, 'h'},
-        {"burst", required_argument, nullptr, 'b'},
-        {"rate", required_argument, nullptr, 'r'},
-        {"delay", required_argument, nullptr, 'd'},
-        {"hold-delay", required_argument, nullptr, 'o'},
-        {nullptr, 0, nullptr, 0},
-    };
+    Watcher::Button key_bind{Watcher::Button::None};
 
     while ((c = getopt_long(argc, argv, optstring, longopts, nullptr)) != -1) {
         switch (c) {
@@ -40,6 +44,11 @@ int main(int argc, char *argv[]) {
         case 'o':
             hold_delay = atoi(optarg);
             break;
+        case 'k': {
+            auto value = Watcher::ToEnum<Watcher::Button>(optarg);
+            key_bind = value;
+            break;
+        }
         case '?':
         case ':':
             return -1;
@@ -69,6 +78,7 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+    // Start the system
     std::unique_ptr<Driver::Driver> driver = std::make_unique<Driver::Uinput>();
     std::unique_ptr<Watcher::Watcher> watcher =
         std::make_unique<Watcher::EventWatcher>(*driver.get(), filename);
@@ -83,6 +93,11 @@ int main(int argc, char *argv[]) {
         driver->SetBurstLength(burst_length);
     }
 
+    if (key_bind != Watcher::Button::None) {
+        watcher->SetKeyBind(key_bind);
+    }
+
+    // Driver must be started before the key watcher
     driver->Start();
     watcher->Start();
 

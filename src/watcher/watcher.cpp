@@ -14,13 +14,17 @@ void Watcher::Start() {
                                             stop.get_token());
 }
 
+void Watcher::SetKeyBind(Button bind) {
+    key_bind = bind;
+}
+
 void Watcher::Worker(std::stop_token stoken) {
     Button button;
     int value;
     while (!stoken.stop_requested()) {
         ReadInput(button, value);
 
-        if (button == Button::Middle) {
+        if (button == key_bind) {
             driver.Update(value);
         }
     }
