@@ -19,7 +19,6 @@ void Watcher::Worker(std::stop_token stoken) {
     int value;
     while (!stoken.stop_requested()) {
         ReadInput(button, value);
-        printf("button %d value %d\n", static_cast<int>(button), value);
 
         if (button == Button::Middle) {
             driver.Update(value);
