@@ -67,6 +67,7 @@ int main(int argc, char *argv[]) {
         case 'k': {
             auto value = Watcher::ToEnum<Watcher::Button>(optarg);
             key_binds.insert(value);
+            std::printf("Bound %s to clicker\n", Watcher::CanonicalizeEnum(value).c_str());
             break;
         }
         case '?':
@@ -75,6 +76,23 @@ int main(int argc, char *argv[]) {
         default:
             printf("%s\n", optarg);
         }
+    }
+
+    if (rate != 0) {
+        delay = 60.0f / static_cast<double>(rate) * 1000000.0;
+        std::printf("Delay set to %.03lf ms\n", delay / 1000.0);
+    } else if (delay != 0) {
+        std::printf("Delay set to %d ms\n", delay);
+        delay *= 1000;
+    }
+    if (hold_delay != 0) {
+        std::printf("Hold delay set to %d ms\n", hold_delay);
+        hold_delay *= 1000;
+
+        // TODO: Sanitize hold_delay > delay
+    }
+    if (key_binds.empty()) {
+        key_binds.insert(Watcher::Button::Middle);
     }
 
     if (optind < argc) {
@@ -98,33 +116,20 @@ int main(int argc, char *argv[]) {
             return -1;
         }
         struct dirent *entry;
+        std::vector<std::string> device_names;
         while ((entry = readdir(dir_stream)) != nullptr) {
             std::string filename{entry->d_name};
             if (filename.find("event-mouse") == std::string::npos ||
                 filename.find("if01") != std::string::npos) {
                 continue;
             }
+            device_names.push_back(filename);
             descriptors.push_back(openat(dirfd, entry->d_name, O_RDONLY));
         }
-    }
-
-    if (rate != 0) {
-        delay = 60.0f / static_cast<double>(rate) * 1000000.0;
-        printf("Delay set to %.03lf ms\n", delay / 1000.0);
-    } else if (delay != 0) {
-        delay *= 1000;
-    }
-    if (hold_delay != 0) {
-        hold_delay *= 1000;
-    }
-
-    // if (hold_delay >= delay) {
-    //     printf("hold delay must be less than delay\n");
-    //     return -1;
-    // }
-
-    if (key_binds.empty()) {
-        key_binds.insert(Watcher::Button::Middle);
+        printf("Found %ld device(s)\n", descriptors.size());
+        for (const auto &name : device_names) {
+            std::printf("- %s\n", name.c_str());
+        }
     }
 
     // Start the system
