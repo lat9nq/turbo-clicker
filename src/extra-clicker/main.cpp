@@ -100,7 +100,8 @@ int main(int argc, char *argv[]) {
         struct dirent *entry;
         while ((entry = readdir(dir_stream)) != nullptr) {
             std::string filename{entry->d_name};
-            if (filename.find("event-mouse") == std::string::npos) {
+            if (filename.find("event-mouse") == std::string::npos ||
+                filename.find("if01") != std::string::npos) {
                 continue;
             }
             descriptors.push_back(openat(dirfd, entry->d_name, O_RDONLY));
