@@ -2,13 +2,13 @@
 
 #include <sys/types.h>
 
-namespace Watcher {
+namespace Input {
 enum class Button : u_int32_t;
-class Watcher {
+class Device {
   public:
-    explicit Watcher();
-    virtual ~Watcher();
+    explicit Device();
+    virtual ~Device();
 
     virtual void ReadInput(Button &button, int &value) = 0;
 };
-} // namespace Watcher
+} // namespace Input

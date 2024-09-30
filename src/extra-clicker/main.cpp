@@ -15,12 +15,12 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-void Worker(Watcher::Watcher &watcher, Driver::Driver &driver,
-            const std::set<Watcher::Button> &binds, std::stop_token stoken) {
-    Watcher::Button button;
+void Worker(Input::Device &Input, Driver::Driver &driver, const std::set<Input::Button> &binds,
+            std::stop_token stoken) {
+    Input::Button button;
     int value;
     while (!stoken.stop_requested()) {
-        watcher.ReadInput(button, value);
+        Input.ReadInput(button, value);
         if (binds.contains(button)) {
             driver.Update(value);
         }
@@ -36,7 +36,7 @@ struct Settings {
     int rate{};
     int delay{};
     int hold_delay{};
-    std::set<Watcher::Button> key_binds{};
+    std::set<Input::Button> key_binds{};
 };
 
 error_t Parser(int key, char *arg, struct argp_state *state) {
@@ -55,9 +55,9 @@ error_t Parser(int key, char *arg, struct argp_state *state) {
         settings.hold_delay = atoi(arg);
         break;
     case 'k': {
-        auto value = Watcher::ToEnum<Watcher::Button>(arg);
+        auto value = Input::ToEnum<Input::Button>(arg);
         settings.key_binds.insert(value);
-        std::printf("Bound %s to clicker\n", Watcher::CanonicalizeEnum(value).c_str());
+        std::printf("Bound %s to clicker\n", Input::CanonicalizeEnum(value).c_str());
         break;
     }
     default:
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
         // TODO: Sanitize hold_delay > delay
     }
     if (settings.key_binds.empty()) {
-        settings.key_binds.insert(Watcher::Button::Middle);
+        settings.key_binds.insert(Input::Button::Middle);
     }
 
     // if (optind < argc) {
@@ -146,9 +146,9 @@ int main(int argc, char *argv[]) {
 
     // Start the system
     std::unique_ptr<Driver::Driver> driver = std::make_unique<Driver::Uinput>();
-    std::vector<std::unique_ptr<Watcher::Watcher>> watchers;
+    std::vector<std::unique_ptr<Input::Device>> Inputs;
     for (const auto fd : descriptors) {
-        watchers.push_back(std::make_unique<Watcher::EventWatcher>(fd));
+        Inputs.push_back(std::make_unique<Input::Event>(fd));
     }
 
     if (settings.delay != 0) {
@@ -161,16 +161,14 @@ int main(int argc, char *argv[]) {
         driver->SetBurstLength(settings.burst_length);
     }
 
-    // Driver must be started before the key watcher
+    // Driver must be started before the key Input
     driver->Start();
 
     std::stop_source stop;
     std::vector<std::thread> threads;
-    for (const auto &watcher : watchers) {
+    for (const auto &Input : Inputs) {
         threads.push_back(std::thread(
-            [&](std::stop_token s) {
-                Worker(*watcher.get(), *driver.get(), settings.key_binds, s);
-            },
+            [&](std::stop_token s) { Worker(*Input.get(), *driver.get(), settings.key_binds, s); },
             stop.get_token()));
     }
     for (auto &thread : threads) {

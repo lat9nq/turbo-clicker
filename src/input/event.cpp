@@ -5,19 +5,19 @@
 #include <linux/input.h>
 #include <unistd.h>
 
-namespace Watcher {
-EventWatcher::EventWatcher(int fd_) : Watcher(), fd{fd_} {
+namespace Input {
+Event::Event(int fd_) : Device(), fd{fd_} {
 }
 
-EventWatcher::~EventWatcher() {
+Event::~Event() {
     close(fd);
 }
 
-bool EventWatcher::Valid() const {
+bool Event::Valid() const {
     return fd != -1;
 }
 
-void EventWatcher::ReadInput(Button &button, int &value) {
+void Event::ReadInput(Button &button, int &value) {
     auto clear_values = [&]() {
         button = Button::Invalid;
         value = 0;
@@ -72,4 +72,4 @@ void EventWatcher::ReadInput(Button &button, int &value) {
         value = event.value;
     } while (event.type != EV_KEY);
 }
-} // namespace Watcher
+} // namespace Input

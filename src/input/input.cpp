@@ -1,7 +1,7 @@
 #include "input/input.h"
 
-namespace Watcher {
-Watcher::Watcher() = default;
-Watcher::~Watcher() = default;
+namespace Input {
+Device::Device() = default;
+Device::~Device() = default;
 
-} // namespace Watcher
+} // namespace Input

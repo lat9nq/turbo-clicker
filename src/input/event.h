@@ -7,11 +7,11 @@ namespace Driver {
 class Driver;
 }
 
-namespace Watcher {
-class EventWatcher : public Watcher {
+namespace Input {
+class Event : public Device {
   public:
-    explicit EventWatcher(int fd);
-    ~EventWatcher();
+    explicit Event(int fd);
+    ~Event();
 
     bool Valid() const;
 
@@ -20,4 +20,4 @@ class EventWatcher : public Watcher {
   private:
     std::atomic<int> fd{-1};
 };
-} // namespace Watcher
+} // namespace Input

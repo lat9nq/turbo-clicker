@@ -4,7 +4,7 @@
 #include <utility>
 #include <vector>
 
-namespace Watcher {
+namespace Input {
 
 #define PAIR_8(N, X, ...) {#X, N::X} __VA_OPT__(, PAIR_9(N, __VA_ARGS__))
 #define PAIR_7(N, X, ...) {#X, N::X} __VA_OPT__(, PAIR_8(N, __VA_ARGS__))
@@ -53,4 +53,4 @@ template <typename Type> inline Type ToEnum(const std::string &canonicalization)
 
 ENUM(Button, None, Left, Right, Middle, Side, Extra, Forward, Back, Invalid);
 
-} // namespace Watcher
+} // namespace Input

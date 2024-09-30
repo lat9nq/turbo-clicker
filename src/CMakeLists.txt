@@ -6,5 +6,5 @@ add_compile_options(
 )
 
 add_subdirectory(driver)
-add_subdirectory(watcher)
+add_subdirectory(input)
 add_subdirectory(extra-clicker)
