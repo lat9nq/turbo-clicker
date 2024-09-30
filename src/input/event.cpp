@@ -1,7 +1,7 @@
-#include "watcher/event.h"
+#include "input/event.h"
 
-#include "watcher/buttons.h"
-#include "watcher/watcher.h"
+#include "input/buttons.h"
+#include "input/input.h"
 #include <linux/input.h>
 #include <unistd.h>
 

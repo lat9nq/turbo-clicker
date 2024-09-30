@@ -1,8 +1,8 @@
 #include "driver/driver.h"
 #include "driver/uinput.h"
-#include "watcher/buttons.h"
-#include "watcher/event.h"
-#include "watcher/watcher.h"
+#include "input/buttons.h"
+#include "input/event.h"
+#include "input/input.h"
 #include <argp.h>
 #include <bits/types/error_t.h>
 #include <cerrno>
