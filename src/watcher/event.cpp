@@ -2,20 +2,11 @@
 
 #include "watcher/buttons.h"
 #include "watcher/watcher.h"
-#include <cerrno>
-#include <cstdio>
-#include <fcntl.h>
 #include <linux/input.h>
 #include <unistd.h>
 
 namespace Watcher {
-EventWatcher::EventWatcher(const char *device) : Watcher(), device_name{device} {
-    fd = open(device_name, O_RDONLY);
-    if (fd == -1) {
-        int err = errno;
-        std::fprintf(stderr, "error %d\n", err);
-        return;
-    }
+EventWatcher::EventWatcher(int fd_) : Watcher(), fd{fd_} {
 }
 
 EventWatcher::~EventWatcher() {
@@ -40,7 +31,6 @@ void EventWatcher::ReadInput(Button &button, int &value) {
     struct input_event event;
     do {
         ssize_t size = read(fd, &event, sizeof(event));
-        // printf("read %ld\n", size);
         if (size == -1) {
             clear_values();
             return;
