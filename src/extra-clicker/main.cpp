@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
             device_names.push_back(filename);
             descriptors.push_back(openat(dirfd, entry->d_name, O_RDONLY));
         }
-        printf("Found %ld device(s)\n", descriptors.size());
+        printf("Found %ld device%s\n", descriptors.size(), descriptors.size() != 1 ? "s" : "");
         for (const auto &name : device_names) {
             std::printf("- %s\n", name.c_str());
         }
