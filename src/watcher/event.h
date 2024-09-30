@@ -10,14 +10,14 @@ class Driver;
 namespace Watcher {
 class EventWatcher : public Watcher {
   public:
-    explicit EventWatcher(Driver::Driver &driver, const char *device);
+    explicit EventWatcher(const char *device);
     ~EventWatcher();
 
     bool Valid() const;
 
-  private:
     virtual void ReadInput(Button &button, int &value);
 
+  private:
     const char *device_name;
     std::atomic<int> fd{-1};
 };

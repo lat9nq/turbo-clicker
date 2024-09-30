@@ -1,6 +1,7 @@
 add_library(watcher
     watcher.cpp
-    watcher.h)
+    watcher.h
+    buttons.h)
 
 if (ENABLE_EVENT)
     target_sources(watcher PUBLIC
