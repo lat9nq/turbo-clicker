@@ -10,7 +10,6 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <memory>
-#include <ratio>
 #include <set>
 #include <stop_token>
 #include <sys/types.h>
@@ -96,7 +95,10 @@ constexpr struct argp_option options[] = {
     {nullptr, 0, nullptr, 0, nullptr, 0},
 };
 
-constexpr char const *doc = nullptr;
+constexpr char const *doc =
+    "Watches input devices events to create repeated simulated mouse clicks."
+    "\vAdditional rates and delays can be specified, e.g. \"-r 900 -r 1100\". To make use of "
+    "additional rates, a cycle bind must be specified using \"--cycle-rate\".";
 
 constexpr struct argp argp_data {
     options, Parser, 0, doc, nullptr, nullptr, nullptr
