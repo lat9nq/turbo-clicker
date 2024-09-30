@@ -7,4 +7,4 @@ add_compile_options(
 
 add_subdirectory(driver)
 add_subdirectory(input)
-add_subdirectory(extra-clicker)
+add_subdirectory(turbo-clicker)
