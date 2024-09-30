@@ -30,6 +30,7 @@ class Driver {
     virtual void ButtonUp() = 0;
 
     std::mutex mutex;
+    std::mutex update_mutex;
 
     std::stop_source stop;
     std::unique_ptr<std::jthread> thread;

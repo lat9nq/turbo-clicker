@@ -1,4 +1,5 @@
 #include "driver/driver.h"
+#include <mutex>
 #include <stop_token>
 #include <unistd.h>
 
@@ -14,12 +15,20 @@ void Driver::Start() {
 }
 
 void Driver::Update(int value) {
-    // TODO: Support multiple devices
-    if (value == 0) {
-        mutex.lock();
+    std::scoped_lock lock(update_mutex);
+    static u_int32_t active{0};
+
+    if (value) {
+        active++;
+        if (active == 1) {
+            burst_count = 0;
+            mutex.unlock(); // start
+        }
     } else {
-        burst_count = 0;
-        mutex.unlock();
+        active--;
+        if (active == 0) {
+            mutex.lock(); // stop
+        }
     }
 }
 
