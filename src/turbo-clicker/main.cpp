@@ -7,6 +7,7 @@
 #include <bits/types/error_t.h>
 #include <cerrno>
 #include <cstdio>
+#include <cstring>
 #include <dirent.h>
 #include <fcntl.h>
 #include <memory>
@@ -20,7 +21,10 @@ struct Settings {
     explicit Settings() = default;
     ~Settings() = default;
 
+    const char *status_file{nullptr};
+
     int current_delay{0};
+    int current_burst{0};
 
     std::vector<int> burst_length{};
     std::vector<double> delay{};
@@ -29,9 +33,53 @@ struct Settings {
     std::set<Input::Button> rate_cycle_binds{};
 };
 
-void Worker(Input::Device &Input, Driver::Driver &driver, Settings &settings,
+constexpr struct {
+    int burst_length{0};
+    double delay{66.666};
+    double hold_delay{20.000};
+} defaults;
+
+void WriteStatus(int status_file_fd, const Settings &settings) {
+    if (status_file_fd == -1) {
+        return;
+    }
+
+    if (lseek(status_file_fd, 0, SEEK_SET) == -1) {
+        int err = errno;
+        std::fprintf(stderr, "error seeking to status file start %d\n", err);
+        return;
+    }
+    if (ftruncate(status_file_fd, 0) == -1) {
+        int err = errno;
+        std::fprintf(stderr, "error truncating status file %d\n", err);
+        return;
+    }
+    char cpm[64], burst[64], data[255];
+    std::snprintf(cpm, 64, "CPM: %.00f", 60.0 * 1000.0 / settings.delay[settings.current_delay]);
+    if (settings.burst_length[settings.current_burst] > 0 || settings.burst_length.size() > 1) {
+        std::snprintf(burst, 64, "BURST: %d", settings.burst_length[settings.current_burst]);
+        std::snprintf(data, 255, "%s\t%s", cpm, burst);
+    } else {
+        std::snprintf(data, 255, "%s", cpm);
+    }
+    if (write(status_file_fd, data, std::strlen(data)) == -1) {
+        int err = errno;
+        std::fprintf(stderr, "error writing status file %d\n", err);
+        return;
+    }
+}
+
+void Worker(Input::Device &Input, Driver::Driver &driver, Settings &settings, int status_file_fd,
             std::stop_token stoken) {
     Input::Button button;
+
+    auto update = [&]() {
+        double delay = settings.delay[settings.current_delay];
+        driver.SetDelay(delay * 1000.0);
+        std::printf("Set delay to #%d %.03fms [%.03f cpm]\n", settings.current_delay, delay,
+                    1.0 / (delay / 1000.0 / 60.0));
+    };
+
     int value;
     while (!stoken.stop_requested()) {
         Input.ReadInput(button, value);
@@ -40,11 +88,9 @@ void Worker(Input::Device &Input, Driver::Driver &driver, Settings &settings,
         }
         if (settings.rate_cycle_binds.contains(button) && value == 1) {
             settings.current_delay = (settings.current_delay + 1) % settings.delay.size();
-            double new_delay = settings.delay[settings.current_delay];
-            driver.SetDelay(new_delay * 1000.0);
-            std::printf("Set delay to #%d %.03fms [%.03f cpm]\n", settings.current_delay, new_delay,
-                        1.0 / (new_delay / 1000.0 / 60.0));
+            update();
         }
+        WriteStatus(status_file_fd, settings);
     }
 }
 
@@ -76,6 +122,13 @@ error_t Parser(int key, char *arg, struct argp_state *state) {
         settings.rate_cycle_binds.insert(value);
         std::printf("Bound %s to cycle rates\n", Input::CanonicalizeEnum(value).c_str());
     } break;
+    case 'f':
+        if (arg == nullptr) {
+            settings.status_file = "/tmp/status";
+        } else {
+            settings.status_file = arg;
+        }
+        break;
     default:
         return ARGP_ERR_UNKNOWN;
     }
@@ -91,6 +144,8 @@ constexpr struct argp_option options[] = {
     {"hold-delay", 'o', "ms", 0, "Specify the amount of time to hold the click down (default 20ms)",
      0},
     {"cycle-rate", cycle_rate_key, "button", 0, "Bind a button to cycle different rates", 1},
+    {"status-file", 'f', "filename", OPTION_ARG_OPTIONAL,
+     "Location to live update the status of the program", 2},
     // Null terminator
     {nullptr, 0, nullptr, 0, nullptr, 0},
 };
@@ -112,10 +167,17 @@ int main(int argc, char *argv[]) {
 
     if (!settings.delay.empty()) {
         std::printf("Delay set to %.03lf ms\n", settings.delay.front());
+    } else {
+        settings.delay.push_back(defaults.delay);
     }
     if (!settings.hold_delay.empty()) {
         std::printf("Hold delay set to %.03lf ms\n", settings.hold_delay.front());
         // TODO: Sanitize hold_delay > delay
+    } else {
+        settings.hold_delay.push_back(defaults.hold_delay);
+    }
+    if (settings.burst_length.empty()) {
+        settings.burst_length.push_back(defaults.burst_length);
     }
     if (settings.key_binds.empty()) {
         settings.key_binds.insert(Input::Button::Middle);
@@ -157,6 +219,7 @@ int main(int argc, char *argv[]) {
         for (const auto &name : device_names) {
             std::printf("- %s\n", name.c_str());
         }
+        close(dirfd);
     }
 
     // Start the system
@@ -166,14 +229,17 @@ int main(int argc, char *argv[]) {
         Inputs.push_back(std::make_unique<Input::Event>(fd));
     }
 
-    if (!settings.delay.empty()) {
-        driver->SetDelay(settings.delay.front() * 1000.0);
-    }
-    if (!settings.hold_delay.empty()) {
-        driver->SetHoldTime(settings.hold_delay.front() * 1000.0);
-    }
-    if (!settings.burst_length.empty()) {
-        driver->SetBurstLength(settings.burst_length.front());
+    driver->SetDelay(settings.delay.front() * 1000.0);
+    driver->SetHoldTime(settings.hold_delay.front() * 1000.0);
+    driver->SetBurstLength(settings.burst_length.front());
+
+    int status_file_fd{-1};
+    if (settings.status_file != nullptr) {
+        status_file_fd = open(settings.status_file, O_WRONLY | O_NONBLOCK | O_CREAT, 0664);
+        if (status_file_fd == -1) {
+            int err = errno;
+            std::fprintf(stderr, "error opening status file %d\n", err);
+        }
     }
 
     // Driver must be started before the input thread
@@ -183,12 +249,19 @@ int main(int argc, char *argv[]) {
     std::vector<std::thread> threads;
     for (const auto &Input : Inputs) {
         threads.push_back(std::thread(
-            [&](std::stop_token s) { Worker(*Input.get(), *driver.get(), settings, s); },
+            [&](std::stop_token s) {
+                Worker(*Input.get(), *driver.get(), settings, status_file_fd, s);
+            },
             stop.get_token()));
     }
+
+    WriteStatus(status_file_fd, settings);
+
     for (auto &thread : threads) {
         thread.join();
     }
+
+    close(status_file_fd);
 
     return 0;
 }
