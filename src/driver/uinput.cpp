@@ -6,10 +6,11 @@
 #include <fcntl.h>
 #include <linux/input-event-codes.h>
 #include <linux/uinput.h>
+#include <stop_token>
 #include <sys/ioctl.h>
 
 namespace Driver {
-Uinput::Uinput() : Driver() {
+Uinput::Uinput(const std::stop_source &stop) : Driver(stop) {
     fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
     if (fd == -1) {
         int err = errno;

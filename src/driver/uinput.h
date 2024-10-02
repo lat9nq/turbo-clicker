@@ -5,11 +5,12 @@
 
 #include "driver/driver.h"
 #include <linux/uinput.h>
+#include <stop_token>
 
 namespace Driver {
 class Uinput : public Driver {
   public:
-    explicit Uinput();
+    explicit Uinput(const std::stop_source &stop);
     ~Uinput();
 
   private:

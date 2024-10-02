@@ -9,7 +9,7 @@
 namespace Driver {
 class Driver {
   public:
-    explicit Driver();
+    explicit Driver(const std::stop_source &stop);
     virtual ~Driver();
 
     void Update(int value);
@@ -32,7 +32,7 @@ class Driver {
     std::mutex mutex;
     std::mutex update_mutex;
 
-    std::stop_source stop;
+    const std::stop_source &stop;
     std::unique_ptr<std::jthread> thread;
 
     std::atomic<u_int64_t> delay{66666};

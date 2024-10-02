@@ -11,8 +11,8 @@
 #include <cstring>
 #include <dirent.h>
 #include <fcntl.h>
-#include <functional>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <stop_token>
 #include <sys/types.h>
@@ -42,6 +42,9 @@ constexpr struct {
 } defaults;
 
 void WriteStatus(int status_file_fd, const Settings &settings) {
+    static std::mutex status_writer_mutex;
+    std::scoped_lock lock{status_writer_mutex};
+
     if (status_file_fd == -1) {
         return;
     }
@@ -73,7 +76,7 @@ void WriteStatus(int status_file_fd, const Settings &settings) {
 
 void Worker(Input::Device &Input, Driver::Driver &driver, Settings &settings, int status_file_fd,
             std::stop_token stoken) {
-    Input::Button button;
+    Input::Button button{Input::Button::None};
 
     auto update = [&]() {
         double delay = settings.delay[settings.current_delay];
@@ -82,9 +85,8 @@ void Worker(Input::Device &Input, Driver::Driver &driver, Settings &settings, in
                     1.0 / (delay / 1000.0 / 60.0));
     };
 
-    int value;
+    int value{0};
     while (!stoken.stop_requested()) {
-        Input.ReadInput(button, value);
         if (settings.key_binds.contains(button)) {
             driver.Update(value);
         }
@@ -93,6 +95,8 @@ void Worker(Input::Device &Input, Driver::Driver &driver, Settings &settings, in
             update();
         }
         WriteStatus(status_file_fd, settings);
+
+        Input.ReadInput(button, value);
     }
 }
 
@@ -102,14 +106,16 @@ struct HandlerData {
     int status_file_fd;
     const char *status_file;
     std::stop_source &stop;
+    Driver::Driver &driver;
 };
 static void *handler_input{nullptr};
-extern "C" void Handler(int) {
+extern "C" void Handler(int signal) {
     struct HandlerData &data = *reinterpret_cast<struct HandlerData *>(handler_input);
+    std::fprintf(stderr, "%s received, stopping...\n", strsignal(signal));
     close(data.status_file_fd);
     unlink(data.status_file);
+    data.driver.Update(1);
     data.stop.request_stop();
-    std::terminate(); // TODO: Exit more gracefully
 }
 
 error_t Parser(int key, char *arg, struct argp_state *state) {
@@ -229,7 +235,7 @@ int main(int argc, char *argv[]) {
                 continue;
             }
             device_names.push_back(filename);
-            descriptors.push_back(openat(dirfd, entry->d_name, O_RDONLY));
+            descriptors.push_back(openat(dirfd, entry->d_name, O_RDONLY | O_NONBLOCK));
         }
         printf("Found %ld device%s\n", descriptors.size(), descriptors.size() != 1 ? "s" : "");
         for (const auto &name : device_names) {
@@ -238,8 +244,10 @@ int main(int argc, char *argv[]) {
         close(dirfd);
     }
 
+    std::stop_source stop;
+
     // Start the system
-    std::unique_ptr<Driver::Driver> driver = std::make_unique<Driver::Uinput>();
+    std::unique_ptr<Driver::Driver> driver = std::make_unique<Driver::Uinput>(stop);
     std::vector<std::unique_ptr<Input::Device>> Inputs;
     for (const auto fd : descriptors) {
         Inputs.push_back(std::make_unique<Input::Event>(fd));
@@ -261,7 +269,6 @@ int main(int argc, char *argv[]) {
     // Driver must be started before the input thread
     driver->Start();
 
-    std::stop_source stop;
     std::vector<std::thread> threads;
     for (const auto &Input : Inputs) {
         threads.push_back(std::thread(
@@ -275,7 +282,7 @@ int main(int argc, char *argv[]) {
 
     // Signal handling
     struct HandlerData handler_data {
-        status_file_fd, settings.status_file, stop
+        status_file_fd, settings.status_file, stop, *driver.get()
     };
     handler_input = &handler_data;
     std::signal(SIGINT, Handler);
@@ -283,8 +290,6 @@ int main(int argc, char *argv[]) {
     for (auto &thread : threads) {
         thread.join();
     }
-
-    close(status_file_fd);
 
     return 0;
 }

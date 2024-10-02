@@ -1,7 +1,7 @@
 #include "driver/dummy.h"
 
 namespace Driver {
-Dummy::Dummy() : Driver(){};
+Dummy::Dummy(const std::stop_source &stop) : Driver(stop){};
 Dummy::~Dummy() {
     Join();
 };

@@ -4,7 +4,7 @@
 #include <unistd.h>
 
 namespace Driver {
-Driver::Driver() {
+Driver::Driver(const std::stop_source &stop_) : stop{stop_} {
     mutex.lock();
 };
 Driver::~Driver() = default;
@@ -53,8 +53,11 @@ void Driver::Worker(std::stop_token stoken) {
         ButtonUp();
     };
 
-    while (!stoken.stop_requested()) {
+    while (1) {
         mutex.lock();
+        if (stoken.stop_requested()) {
+            break;
+        }
 
         if (burst_length == 0) {
             click();

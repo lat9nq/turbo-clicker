@@ -5,7 +5,7 @@
 namespace Driver {
 class Dummy : public Driver {
   public:
-    explicit Dummy();
+    explicit Dummy(const std::stop_source &stop);
     ~Dummy();
 
   private:
