@@ -21,4 +21,4 @@ Possible features, no commitment:
 
 I originally wanted a way to fire semi-automatic weapons in video games at the maximum rate of fire.
 Of specific note was Helldivers 2, a Windows game that works in Linux over Wine.
-After finding myself disatisfied with the several options presently available for Linux, I decided it best I just write my own.
+After finding myself disatisfied with the several options presently available for Linux, strangely including Logitech's macro support for mice, I decided it best I just write my own.
