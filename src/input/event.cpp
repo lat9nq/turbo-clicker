@@ -2,7 +2,9 @@
 
 #include "input/buttons.h"
 #include "input/input.h"
+#include <bits/types/struct_timeval.h>
 #include <linux/input.h>
+#include <sys/select.h>
 #include <unistd.h>
 
 namespace Input {
@@ -29,7 +31,17 @@ void Event::ReadInput(Button &button, int &value) {
     }
 
     struct input_event event;
+    fd_set set;
+    FD_SET(fd, &set);
+    struct timeval timeout {
+        0, 500 * 1000
+    };
     do {
+        int count = select(1, &set, nullptr, nullptr, &timeout);
+        if (count == 0) {
+            return;
+        }
+
         ssize_t size = read(fd, &event, sizeof(event));
         if (size == -1) {
             clear_values();
