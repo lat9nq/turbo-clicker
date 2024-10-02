@@ -76,8 +76,6 @@ void WriteStatus(int status_file_fd, const Settings &settings) {
 
 void Worker(Input::Device &Input, Driver::Driver &driver, Settings &settings, int status_file_fd,
             std::stop_token stoken) {
-    Input::Button button{Input::Button::None};
-
     auto update = [&]() {
         double delay = settings.delay[settings.current_delay];
         driver.SetDelay(delay * 1000.0);
@@ -85,6 +83,7 @@ void Worker(Input::Device &Input, Driver::Driver &driver, Settings &settings, in
                     1.0 / (delay / 1000.0 / 60.0));
     };
 
+    Input::Button button{Input::Button::None};
     int value{0};
     while (!stoken.stop_requested()) {
         if (settings.key_binds.contains(button)) {
@@ -244,6 +243,12 @@ int main(int argc, char *argv[]) {
         close(dirfd);
     }
 
+    for (u_int32_t i = 0; i < settings.delay.size(); i++) {
+        double delay = settings.delay[i];
+        double rpm = 60.0 * 1000.0 / delay;
+        std::printf("Delay %d set to %.03fms [%.00f cpm]\n", i, delay, rpm);
+    }
+
     std::stop_source stop;
 
     // Start the system
@@ -277,8 +282,6 @@ int main(int argc, char *argv[]) {
             },
             stop.get_token()));
     }
-
-    WriteStatus(status_file_fd, settings);
 
     // Signal handling
     struct HandlerData handler_data {
