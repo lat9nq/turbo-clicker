@@ -3,8 +3,10 @@
 #include "input/buttons.h"
 #include "input/input.h"
 #include <bits/types/struct_timeval.h>
+#include <cerrno>
 #include <linux/input.h>
-#include <sys/select.h>
+#include <poll.h>
+#include <sys/poll.h>
 #include <unistd.h>
 
 namespace Input {
@@ -21,7 +23,7 @@ bool Event::Valid() const {
 
 void Event::ReadInput(Button &button, int &value) {
     auto clear_values = [&]() {
-        button = Button::Invalid;
+        button = Button::None;
         value = 0;
     };
 
@@ -30,15 +32,20 @@ void Event::ReadInput(Button &button, int &value) {
         return;
     }
 
-    struct input_event event;
-    fd_set set;
-    FD_SET(fd, &set);
-    struct timeval timeout {
-        0, 500 * 1000
+    struct pollfd fds {
+        fd, POLLIN, 0
     };
+    struct input_event event;
     do {
-        int count = select(1, &set, nullptr, nullptr, &timeout);
-        if (count == 0) {
+        int ready = poll(&fds, 1, 500);
+        if (ready == 0) {
+            clear_values();
+            return;
+        } else if (ready == -1) {
+            int err = errno;
+            std::fprintf(stderr, "error waiting for data %d\n", err);
+            clear_values();
+            button = Button::Invalid;
             return;
         }
 
