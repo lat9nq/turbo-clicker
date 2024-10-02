@@ -8,12 +8,16 @@ Features:
 - Can specify rate in milliseconds or clicks per minute.
 - Multiple rates may be specified and cycled through with a separate bind.
 - Uses `/dev/input` to read events, and `/dev/uinput` to create button presses. It works regardless of X11 or Wayland display servers.
+- Status file to show rate or burst config, for use with external HUDs
 
 Planned features:
 - Keyboard support
-- Only usable when specific processes are active
-- Status file to show rate or burst config, for use with external HUDs
+- Activate only when specific processes are running
 - Cycle burst lengths
+
+Possible features, no commitment:
+- Windows backends
+- GTK+ GUI
 
 I originally wanted a way to fire semi-automatic weapons in video games at the maximum rate of fire.
 Of specific note was Helldivers 2, a Windows game that works in Linux over Wine.
