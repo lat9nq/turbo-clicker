@@ -6,10 +6,12 @@
 #include <argp.h>
 #include <bits/types/error_t.h>
 #include <cerrno>
+#include <csignal>
 #include <cstdio>
 #include <cstring>
 #include <dirent.h>
 #include <fcntl.h>
+#include <functional>
 #include <memory>
 #include <set>
 #include <stop_token>
@@ -95,6 +97,20 @@ void Worker(Input::Device &Input, Driver::Driver &driver, Settings &settings, in
 }
 
 constexpr int cycle_rate_key{1};
+
+struct HandlerData {
+    int status_file_fd;
+    const char *status_file;
+    std::stop_source &stop;
+};
+static void *handler_input{nullptr};
+extern "C" void Handler(int) {
+    struct HandlerData &data = *reinterpret_cast<struct HandlerData *>(handler_input);
+    close(data.status_file_fd);
+    unlink(data.status_file);
+    data.stop.request_stop();
+    std::terminate(); // TODO: Exit more gracefully
+}
 
 error_t Parser(int key, char *arg, struct argp_state *state) {
     struct Settings &settings = *reinterpret_cast<struct Settings *>(state->input);
@@ -256,6 +272,13 @@ int main(int argc, char *argv[]) {
     }
 
     WriteStatus(status_file_fd, settings);
+
+    // Signal handling
+    struct HandlerData handler_data {
+        status_file_fd, settings.status_file, stop
+    };
+    handler_input = &handler_data;
+    std::signal(SIGINT, Handler);
 
     for (auto &thread : threads) {
         thread.join();
