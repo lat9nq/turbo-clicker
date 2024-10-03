@@ -2,7 +2,7 @@
 include_directories(.)
 
 add_compile_options(
-    -Werror=all -Werror=extra
+    -Werror=all -Werror=extra -Werror=shadow
 )
 
 add_subdirectory(driver)
