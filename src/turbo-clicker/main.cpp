@@ -38,7 +38,7 @@ struct Settings {
 constexpr struct {
     int burst_length{0};
     double delay{66.666};
-    double hold_delay{20.000};
+    double hold_delay{6.000};
 } defaults;
 
 void WriteStatus(int status_file_fd, const Settings &settings) {
@@ -193,7 +193,6 @@ int main(int argc, char *argv[]) {
     }
     if (!settings.hold_delay.empty()) {
         std::printf("Hold delay set to %.03lf ms\n", settings.hold_delay.front());
-        // TODO: Sanitize hold_delay > delay
     } else {
         settings.hold_delay.push_back(defaults.hold_delay);
     }
@@ -248,6 +247,7 @@ int main(int argc, char *argv[]) {
         double rpm = 60.0 * 1000.0 / delay;
         std::printf("Delay %d set to %.03fms [%.00f cpm]\n", i, delay, rpm);
     }
+    std::printf("Hold delay set to %.03fms\n", settings.hold_delay.front());
 
     std::stop_source stop;
 
