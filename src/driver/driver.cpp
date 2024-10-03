@@ -46,13 +46,15 @@ void Driver::Join() {
     thread->join();
 }
 
-void Driver::Worker(std::stop_token stoken) {
-    const auto click = [&]() {
+void Driver::Click() {
+    click = std::thread([&]() {
         ButtonDown();
         usleep(hold_time);
         ButtonUp();
-    };
+    });
+}
 
+void Driver::Worker(std::stop_token stoken) {
     while (1) {
         mutex.lock();
         if (stoken.stop_requested()) {
@@ -60,15 +62,18 @@ void Driver::Worker(std::stop_token stoken) {
         }
 
         if (burst_length == 0) {
-            click();
+            Click();
         } else if (burst_count < burst_length) {
-            click();
+            Click();
         }
         burst_count++;
 
         mutex.unlock();
 
-        usleep(delay - hold_time);
+        usleep(delay);
+        if (click.joinable()) {
+            click.join();
+        }
     }
 }
 

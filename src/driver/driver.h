@@ -26,6 +26,9 @@ class Driver {
   private:
     void Worker(std::stop_token stoken);
 
+    void Click();
+    std::thread click;
+
     virtual void ButtonDown() = 0;
     virtual void ButtonUp() = 0;
 
