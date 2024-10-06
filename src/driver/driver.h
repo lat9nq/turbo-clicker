@@ -43,5 +43,7 @@ class Driver {
 
     std::atomic<u_int32_t> burst_length{0};
     std::atomic<u_int32_t> burst_count{0};
+
+    std::atomic<u_int32_t> active{0};
 };
 } // namespace Driver

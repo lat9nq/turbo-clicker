@@ -16,7 +16,6 @@ void Driver::Start() {
 
 void Driver::Update(int value) {
     std::scoped_lock lock(update_mutex);
-    static u_int32_t active{0};
 
     if (value) {
         active++;
@@ -28,6 +27,7 @@ void Driver::Update(int value) {
         active--;
         if (active == 0) {
             mutex.lock(); // stop
+            ButtonUp();
         }
     }
 }
@@ -50,7 +50,9 @@ void Driver::Click() {
     click = std::thread([&]() {
         ButtonDown();
         usleep(hold_time);
-        ButtonUp();
+        if (active) {
+            ButtonUp();
+        }
     });
 }
 
