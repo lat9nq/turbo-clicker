@@ -247,7 +247,6 @@ int main(int argc, char *argv[]) {
         double rpm = 60.0 * 1000.0 / delay;
         std::printf("Delay %d set to %.03fms [%.00f cpm]\n", i, delay, rpm);
     }
-    std::printf("Hold delay set to %.03fms\n", settings.hold_delay.front());
 
     std::stop_source stop;
 
@@ -268,6 +267,8 @@ int main(int argc, char *argv[]) {
         if (status_file_fd == -1) {
             int err = errno;
             std::fprintf(stderr, "error opening status file %d\n", err);
+        } else {
+            std::printf("Opened status file %s\n", settings.status_file);
         }
     }
 
