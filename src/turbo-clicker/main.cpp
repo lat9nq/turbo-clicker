@@ -11,6 +11,7 @@
 #include <cstring>
 #include <dirent.h>
 #include <fcntl.h>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <set>
@@ -28,7 +29,7 @@ struct Settings {
     int current_delay{0};
     int current_burst{0};
 
-    std::vector<int> burst_length{};
+    std::vector<u_int32_t> burst_length{std::numeric_limits<u_int32_t>::max()};
     std::vector<double> delay{};
     std::vector<double> hold_delay{};
     std::set<Input::Button> key_binds{};
@@ -113,7 +114,6 @@ extern "C" void Handler(int signal) {
     std::fprintf(stderr, "%s received, stopping...\n", strsignal(signal));
     close(data.status_file_fd);
     unlink(data.status_file);
-    data.driver.Update(1);
     data.stop.request_stop();
 }
 
@@ -271,9 +271,6 @@ int main(int argc, char *argv[]) {
             std::printf("Opened status file %s\n", settings.status_file);
         }
     }
-
-    // Driver must be started before the input thread
-    driver->Start();
 
     std::vector<std::thread> threads;
     for (const auto &Input : Inputs) {

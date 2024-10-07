@@ -32,7 +32,6 @@ Uinput::Uinput(const std::stop_source &stop) : Driver(stop) {
     ioctl(fd, UI_DEV_CREATE);
 }
 Uinput::~Uinput() {
-    Join();
     close(fd);
 }
 
@@ -48,12 +47,12 @@ void Uinput::Emit(int type, int code, int value) {
     write(fd, &ie, sizeof(ie));
 }
 
-void Uinput::ButtonDown() {
+void Uinput::EmitDown() {
     Emit(EV_KEY, BTN_LEFT, 1);
     Emit(EV_SYN, SYN_REPORT, 0);
 }
 
-void Uinput::ButtonUp() {
+void Uinput::EmitUp() {
     Emit(EV_KEY, BTN_LEFT, 0);
     Emit(EV_SYN, SYN_REPORT, 0);
 }

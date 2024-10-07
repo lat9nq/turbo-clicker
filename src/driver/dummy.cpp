@@ -2,15 +2,13 @@
 
 namespace Driver {
 Dummy::Dummy(const std::stop_source &stop) : Driver(stop){};
-Dummy::~Dummy() {
-    Join();
-};
+Dummy::~Dummy() = default;
 
-void Dummy::ButtonDown() {
+void Dummy::EmitDown() {
     printf("button down\n");
 }
 
-void Dummy::ButtonUp() {
+void Dummy::EmitUp() {
     printf("button up\n");
 }
 

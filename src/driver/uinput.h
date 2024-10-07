@@ -14,8 +14,8 @@ class Uinput : public Driver {
     ~Uinput();
 
   private:
-    void ButtonDown();
-    void ButtonUp();
+    void EmitDown();
+    void EmitUp();
 
     void Emit(int type, int code, int value);
 

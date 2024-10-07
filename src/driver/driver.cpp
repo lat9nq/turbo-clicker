@@ -4,31 +4,20 @@
 #include <unistd.h>
 
 namespace Driver {
-Driver::Driver(const std::stop_source &stop_) : stop{stop_} {
-    mutex.lock();
-};
-Driver::~Driver() = default;
-
-void Driver::Start() {
-    thread =
-        std::make_unique<std::jthread>([&](std::stop_token s) { Worker(s); }, stop.get_token());
+Driver::Driver(const std::stop_source &stop_) : main_stop{stop_} {
+    garbage_collector = std::thread([&]() { CleanUp(main_stop.get_token()); });
+}
+Driver::~Driver() {
+    garbage_collector.join();
 }
 
 void Driver::Update(int value) {
-    std::scoped_lock lock(update_mutex);
+    std::scoped_lock lock(update_mutex); // TODO: Remove redundant lock
 
     if (value) {
-        active++;
-        if (active == 1) {
-            burst_count = 0;
-            mutex.unlock(); // start
-        }
+        Activate();
     } else {
-        active--;
-        if (active == 0) {
-            mutex.lock(); // stop
-            ButtonUp();
-        }
+        PopWorker();
     }
 }
 
@@ -42,40 +31,80 @@ void Driver::SetBurstLength(u_int32_t length) {
     burst_length = length;
 }
 
-void Driver::Join() {
-    thread->join();
+void Driver::ButtonDown() {
+    std::scoped_lock lock{button_mutex};
+    if (!down) {
+        down = true;
+        EmitDown();
+    }
 }
 
-void Driver::Click() {
-    click = std::thread([&]() {
+void Driver::ButtonUp() {
+    std::scoped_lock lock{button_mutex};
+    if (down) {
+        down = false;
+        EmitUp();
+    }
+}
+
+std::thread Driver::Click(std::stop_token &stoken) {
+    return std::thread([&]() {
         ButtonDown();
         usleep(hold_time);
-        if (active) {
+        if (!stoken.stop_requested()) {
             ButtonUp();
         }
     });
 }
 
+void Driver::CleanUp(std::stop_token stoken) {
+    auto do_cleanup = [&]() {
+        while (!garbage.empty()) {
+            auto &worker = garbage.front().second;
+
+            worker.join();
+
+            garbage.pop();
+        }
+    };
+    while (!stoken.stop_requested()) {
+        do_cleanup();
+        usleep(1000000);
+    }
+    do_cleanup();
+}
+
+void Driver::PopWorker() {
+    std::scoped_lock lock{transfer_mutex};
+    stop_sources.front().request_stop();
+    ButtonUp();
+    garbage.push(std::pair<std::stop_source, std::thread>{std::move(stop_sources.front()),
+                                                          std::move(workers.front())});
+    stop_sources.pop();
+    workers.pop();
+}
+
+void Driver::Activate() {
+    std::scoped_lock lock{transfer_mutex};
+    stop_sources.push({});
+    workers.push(std::thread{[&]() { Worker(stop_sources.front().get_token()); }});
+}
+
 void Driver::Worker(std::stop_token stoken) {
-    while (1) {
-        mutex.lock();
-        if (stoken.stop_requested()) {
-            break;
-        }
+    for (u_int32_t burst_count = 0; burst_count < burst_length; burst_count++) {
+        std::thread click;
+        {
+            std::scoped_lock lock{active_mutex};
+            if (stoken.stop_requested()) {
+                break;
+            }
 
-        if (burst_length == 0) {
-            Click();
-        } else if (burst_count < burst_length) {
-            Click();
+            click = Click(stoken);
+            burst_count++;
         }
-        burst_count++;
-
-        mutex.unlock();
 
         usleep(delay);
-        if (click.joinable()) {
-            click.join();
-        }
+        click.join();
     }
 }
 

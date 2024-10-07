@@ -9,7 +9,7 @@ class Dummy : public Driver {
     ~Dummy();
 
   private:
-    void ButtonDown();
-    void ButtonUp();
+    void EmitDown();
+    void EmitUp();
 };
 } // namespace Driver
