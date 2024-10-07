@@ -87,7 +87,7 @@ void Driver::PopWorker() {
 void Driver::Activate() {
     std::scoped_lock lock{transfer_mutex};
     stop_sources.push({});
-    workers.push(std::thread{[&]() { Worker(stop_sources.front().get_token()); }});
+    workers.push(std::thread{[&]() { Worker(stop_sources.back().get_token()); }});
 }
 
 void Driver::Worker(std::stop_token stoken) {
