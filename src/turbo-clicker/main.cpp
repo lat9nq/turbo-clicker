@@ -11,6 +11,7 @@
 #include <cstring>
 #include <dirent.h>
 #include <fcntl.h>
+#include <functional>
 #include <limits>
 #include <memory>
 #include <mutex>
@@ -29,15 +30,16 @@ struct Settings {
     int current_delay{0};
     int current_burst{0};
 
-    std::vector<u_int32_t> burst_length{std::numeric_limits<u_int32_t>::max()};
+    std::vector<u_int32_t> burst_length{};
     std::vector<double> delay{};
     std::vector<double> hold_delay{};
     std::set<Input::Button> key_binds{};
     std::set<Input::Button> rate_cycle_binds{};
+    std::set<Input::Button> burst_cycle_binds{};
 };
 
 constexpr struct {
-    int burst_length{0};
+    u_int32_t burst_length{std::numeric_limits<u_int32_t>::max()};
     double delay{66.666};
     double hold_delay{6.000};
 } defaults;
@@ -75,14 +77,15 @@ void WriteStatus(int status_file_fd, const Settings &settings) {
     }
 }
 
+template <typename Type>
+void Cycle(int &index, const std::vector<Type> &data, std::function<void(Type)> set) {
+    index = (index + 1) % data.size();
+    Type current = data.at(index);
+    set(current);
+};
+
 void Worker(Input::Device &Input, Driver::Driver &driver, Settings &settings, int status_file_fd,
             std::stop_token stoken) {
-    auto update = [&]() {
-        double delay = settings.delay[settings.current_delay];
-        driver.SetDelay(delay * 1000.0);
-        std::printf("Set delay to #%d %.03fms [%.03f cpm]\n", settings.current_delay, delay,
-                    1.0 / (delay / 1000.0 / 60.0));
-    };
 
     Input::Button button{Input::Button::None};
     int value{0};
@@ -91,8 +94,17 @@ void Worker(Input::Device &Input, Driver::Driver &driver, Settings &settings, in
             driver.Update(value);
         }
         if (settings.rate_cycle_binds.contains(button) && value == 1) {
-            settings.current_delay = (settings.current_delay + 1) % settings.delay.size();
-            update();
+            Cycle<double>(settings.current_delay, settings.delay,
+                          [&](double x) { driver.SetDelay(x); });
+            double delay = settings.delay[settings.current_delay];
+            std::printf("Set delay to #%d: %.03fms [%.03f cpm]\n", settings.current_delay, delay,
+                        1.0 / (delay / 1000.0 / 60.0));
+        }
+        if (settings.burst_cycle_binds.contains(button) && value == 1) {
+            Cycle<u_int32_t>(settings.current_burst, settings.burst_length,
+                             [&](int x) { driver.SetBurstLength(x); });
+            std::printf("Set burst length to #%d: %d\n", settings.current_burst,
+                        settings.burst_length[settings.current_burst]);
         }
         WriteStatus(status_file_fd, settings);
 
@@ -101,6 +113,7 @@ void Worker(Input::Device &Input, Driver::Driver &driver, Settings &settings, in
 }
 
 constexpr int cycle_rate_key{1};
+constexpr int cycle_burst_key{2};
 
 struct HandlerData {
     int status_file_fd;
@@ -143,6 +156,11 @@ error_t Parser(int key, char *arg, struct argp_state *state) {
         settings.rate_cycle_binds.insert(value);
         std::printf("Bound %s to cycle rates\n", Input::CanonicalizeEnum(value).c_str());
     } break;
+    case cycle_burst_key: {
+        auto value = Input::ToEnum<Input::Button>(arg);
+        settings.burst_cycle_binds.insert(value);
+        std::printf("Bound %s to cycle burst lengths\n", Input::CanonicalizeEnum(value).c_str());
+    } break;
     case 'f':
         if (arg == nullptr) {
             settings.status_file = "/tmp/status";
@@ -165,6 +183,8 @@ constexpr struct argp_option options[] = {
     {"hold-delay", 'o', "ms", 0, "Specify the amount of time to hold the click down (default 20ms)",
      0},
     {"cycle-rate", cycle_rate_key, "button", 0, "Bind a button to cycle different rates", 1},
+    {"cycle-burst", cycle_burst_key, "button", 0, "Bind a button to cycle different burst lengths",
+     1},
     {"status-file", 'f', "filename", OPTION_ARG_OPTIONAL,
      "Location to live update the status of the program", 2},
     // Null terminator
