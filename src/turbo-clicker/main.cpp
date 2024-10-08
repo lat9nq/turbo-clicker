@@ -66,7 +66,8 @@ void WriteStatus(int status_file_fd, const Settings &settings) {
     }
     char cpm[64], burst[64], data[255];
     std::snprintf(cpm, 64, "CPM: %.00f", 60.0 * 1000.0 / settings.delay[settings.current_delay]);
-    if (settings.burst_length[settings.current_burst] > 0 || settings.burst_length.size() > 1) {
+    if (settings.burst_length[settings.current_burst] != defaults.burst_length ||
+        settings.burst_length.size() > 1) {
         std::snprintf(burst, 64, "BURST: %d", settings.burst_length[settings.current_burst]);
         std::snprintf(data, 255, "%s\t%s", cpm, burst);
     } else {
