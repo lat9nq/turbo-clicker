@@ -29,6 +29,7 @@ struct Settings {
 
     int current_delay{0};
     int current_burst{0};
+    int current_hold_delay{0};
 
     std::vector<u_int32_t> burst_length{};
     std::vector<double> delay{};
@@ -36,6 +37,7 @@ struct Settings {
     std::set<Input::Button> key_binds{};
     std::set<Input::Button> rate_cycle_binds{};
     std::set<Input::Button> burst_cycle_binds{};
+    std::set<Input::Button> hold_cycle_binds{};
 };
 
 constexpr struct {
@@ -106,6 +108,12 @@ void Worker(Input::Device &Input, Driver::Driver &driver, Settings &settings, in
             std::printf("Set burst length to #%d: %d\n", settings.current_burst,
                         settings.burst_length[settings.current_burst]);
         }
+        if (settings.hold_cycle_binds.contains(button) && value == 1) {
+            Cycle<double>(settings.current_hold_delay, settings.hold_delay,
+                          [&](double x) { driver.SetHoldTime(x); });
+            std::printf("Set hold delay to #%d: %.03fms\n", settings.current_hold_delay,
+                        settings.hold_delay[settings.current_hold_delay]);
+        }
         WriteStatus(status_file_fd, settings);
 
         Input.ReadInput(button, value);
@@ -114,6 +122,7 @@ void Worker(Input::Device &Input, Driver::Driver &driver, Settings &settings, in
 
 constexpr int cycle_rate_key{1};
 constexpr int cycle_burst_key{2};
+constexpr int cycle_hold_delay_key{3};
 
 struct HandlerData {
     int status_file_fd;
@@ -161,6 +170,11 @@ error_t Parser(int key, char *arg, struct argp_state *state) {
         settings.burst_cycle_binds.insert(value);
         std::printf("Bound %s to cycle burst lengths\n", Input::CanonicalizeEnum(value).c_str());
     } break;
+    case cycle_hold_delay_key: {
+        auto value = Input::ToEnum<Input::Button>(arg);
+        settings.hold_cycle_binds.insert(value);
+        std::printf("Bound %s to cycle hold delays\n", Input::CanonicalizeEnum(value).c_str());
+    } break;
     case 'f':
         if (arg == nullptr) {
             settings.status_file = "/tmp/status";
@@ -184,6 +198,8 @@ constexpr struct argp_option options[] = {
      0},
     {"cycle-rate", cycle_rate_key, "button", 0, "Bind a button to cycle different rates", 1},
     {"cycle-burst", cycle_burst_key, "button", 0, "Bind a button to cycle different burst lengths",
+     1},
+    {"cycle-hold-delay", cycle_hold_delay_key, "button", 0, "Bind a button to cycle hold delays",
      1},
     {"status-file", 'f', "filename", OPTION_ARG_OPTIONAL,
      "Location to live update the status of the program", 2},
