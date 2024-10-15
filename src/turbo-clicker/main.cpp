@@ -98,7 +98,7 @@ void Worker(Input::Device &Input, Driver::Driver &driver, Settings &settings, in
         }
         if (settings.rate_cycle_binds.contains(button) && value == 1) {
             Cycle<double>(settings.current_delay, settings.delay,
-                          [&](double x) { driver.SetDelay(x); });
+                          [&](double x) { driver.SetDelay(x * 1000.0); });
             double delay = settings.delay[settings.current_delay];
             std::printf("Set delay to #%d: %.03fms [%.03f cpm]\n", settings.current_delay, delay,
                         1.0 / (delay / 1000.0 / 60.0));
@@ -111,7 +111,7 @@ void Worker(Input::Device &Input, Driver::Driver &driver, Settings &settings, in
         }
         if (settings.hold_cycle_binds.contains(button) && value == 1) {
             Cycle<double>(settings.current_hold_delay, settings.hold_delay,
-                          [&](double x) { driver.SetHoldTime(x); });
+                          [&](double x) { driver.SetHoldTime(x * 1000.0); });
             std::printf("Set hold delay to #%d: %.03fms\n", settings.current_hold_delay,
                         settings.hold_delay[settings.current_hold_delay]);
         }
