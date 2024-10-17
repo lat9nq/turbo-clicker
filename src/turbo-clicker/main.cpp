@@ -96,20 +96,20 @@ void Worker(Input::Device &Input, Driver::Driver &driver, Settings &settings, in
         if (settings.key_binds.contains(button)) {
             driver.Update(value);
         }
-        if (settings.rate_cycle_binds.contains(button) && value == 1) {
+        if (settings.rate_cycle_binds.contains(button) && value != 0) {
             Cycle<double>(settings.current_delay, settings.delay,
                           [&](double x) { driver.SetDelay(x * 1000.0); });
             double delay = settings.delay[settings.current_delay];
             std::printf("Set delay to #%d: %.03fms [%.03f cpm]\n", settings.current_delay, delay,
                         1.0 / (delay / 1000.0 / 60.0));
         }
-        if (settings.burst_cycle_binds.contains(button) && value == 1) {
+        if (settings.burst_cycle_binds.contains(button) && value != 0) {
             Cycle<u_int32_t>(settings.current_burst, settings.burst_length,
                              [&](int x) { driver.SetBurstLength(x); });
             std::printf("Set burst length to #%d: %d\n", settings.current_burst,
                         settings.burst_length[settings.current_burst]);
         }
-        if (settings.hold_cycle_binds.contains(button) && value == 1) {
+        if (settings.hold_cycle_binds.contains(button) && value != 0) {
             Cycle<double>(settings.current_hold_delay, settings.hold_delay,
                           [&](double x) { driver.SetHoldTime(x * 1000.0); });
             std::printf("Set hold delay to #%d: %.03fms\n", settings.current_hold_delay,
