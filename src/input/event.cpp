@@ -4,6 +4,7 @@
 #include "input/input.h"
 #include <bits/types/struct_timeval.h>
 #include <cerrno>
+#include <linux/input-event-codes.h>
 #include <linux/input.h>
 #include <poll.h>
 #include <sys/poll.h>
@@ -36,6 +37,7 @@ void Event::ReadInput(Button &button, int &value) {
         fd, POLLIN, 0
     };
     struct input_event event;
+    clear_values();
     do {
         int ready = poll(&fds, 1, 500);
         if (ready == 0) {
@@ -83,12 +85,26 @@ void Event::ReadInput(Button &button, int &value) {
                 break;
             }
         } break;
+        case EV_REL: {
+            switch (event.code) {
+            case REL_WHEEL: {
+                if (event.value == 1) {
+                    button = Button::ScrollUp;
+                } else if (event.value == -1) {
+                    button = Button::ScrollDown;
+                }
+            } break;
+            default:
+                clear_values();
+            }
+            break;
+        } break;
         default:
             clear_values();
             break;
         }
 
         value = event.value;
-    } while (event.type != EV_KEY);
+    } while (button == Button::None);
 }
 } // namespace Input
