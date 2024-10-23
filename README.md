@@ -33,4 +33,6 @@ cmake ..
 make
 ```
 
+Build products will be in the `build/bin` directory.
+
 I'll write more detailed build instructions at a later time, but once cloned and in the necessary directory, this will get you going.
