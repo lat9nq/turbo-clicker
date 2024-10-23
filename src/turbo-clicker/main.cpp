@@ -269,7 +269,8 @@ int main(int argc, char *argv[]) {
         std::vector<std::string> device_names;
         while ((entry = readdir(dir_stream)) != nullptr) {
             std::string filename{entry->d_name};
-            if (filename.find("event") == std::string::npos ||
+            if ((filename.find("event-mouse") == std::string::npos &&
+                 filename.find("event-keyboard") == std::string::npos) ||
                 filename.find("if0") != std::string::npos) {
                 continue;
             }
