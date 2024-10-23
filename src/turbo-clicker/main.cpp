@@ -38,6 +38,7 @@ struct Settings {
     std::set<Input::Button> rate_cycle_binds{};
     std::set<Input::Button> burst_cycle_binds{};
     std::set<Input::Button> hold_cycle_binds{};
+    std::vector<const char *> devices{};
 };
 
 constexpr struct {
@@ -176,12 +177,15 @@ error_t Parser(int key, char *arg, struct argp_state *state) {
         settings.hold_cycle_binds.insert(value);
         std::printf("Bound %s to cycle hold delays\n", Input::CanonicalizeEnum(value).c_str());
     } break;
-    case 'f':
+    case 's':
         if (arg == nullptr) {
             settings.status_file = "/tmp/status";
         } else {
             settings.status_file = arg;
         }
+        break;
+    case 'f':
+        settings.devices.push_back(arg);
         break;
     default:
         return ARGP_ERR_UNKNOWN;
@@ -202,8 +206,9 @@ constexpr struct argp_option options[] = {
      1},
     {"cycle-hold-delay", cycle_hold_delay_key, "button", 0, "Bind a button to cycle hold delays",
      1},
-    {"status-file", 'f', "filename", OPTION_ARG_OPTIONAL,
+    {"status-file", 's', "filename", OPTION_ARG_OPTIONAL,
      "Location to live update the status of the program", 2},
+    {"file-device", 'f', "filenaeme", 0, "Specify the /dev/input device to use", 3},
     // Null terminator
     {nullptr, 0, nullptr, 0, nullptr, 0},
 };
@@ -240,15 +245,8 @@ int main(int argc, char *argv[]) {
         settings.key_binds.insert(Input::Button::Middle);
     }
 
-    // if (optind < argc) {
-    //     descriptors.push_back(open(argv[optind], O_RDONLY));
-    //     if (descriptors.back() == -1) {
-    //         int err = errno;
-    //         std::fprintf(stderr, "error %d\n", err);
-    //         return -1;
-    //     }
-    // } else {
-    {
+    if (settings.devices.empty()) {
+        // reads all the dev input devices and opens all usable ones
         int dirfd = open("/dev/input/by-id", O_RDONLY);
         if (dirfd == -1) {
             int err = errno;
@@ -277,6 +275,16 @@ int main(int argc, char *argv[]) {
             std::printf("- %s\n", name.c_str());
         }
         close(dirfd);
+    } else {
+        for (auto device : settings.devices) {
+            int fd = open(device, O_RDONLY | O_NONBLOCK);
+            if (fd == -1) {
+                int err = errno;
+                std::fprintf(stderr, "error %d while trying to open`%s'\n", err, device);
+                continue;
+            }
+            descriptors.push_back(fd);
+        }
     }
 
     for (u_int32_t i = 0; i < settings.delay.size(); i++) {
