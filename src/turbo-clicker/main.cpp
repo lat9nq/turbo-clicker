@@ -116,6 +116,12 @@ void Worker(Input::Device &Input, Driver::Driver &driver, Settings &settings, in
             std::printf("Set hold delay to #%d: %.03fms\n", settings.current_hold_delay,
                         settings.hold_delay[settings.current_hold_delay]);
         }
+
+        // if (button != Input::Button::None) {
+        //     std::printf("%02d %s\n", value,
+        //     Input::CanonicalizeEnum<Input::Button>(button).c_str());
+        // }
+
         WriteStatus(status_file_fd, settings);
 
         Input.ReadInput(button, value);
@@ -263,8 +269,8 @@ int main(int argc, char *argv[]) {
         std::vector<std::string> device_names;
         while ((entry = readdir(dir_stream)) != nullptr) {
             std::string filename{entry->d_name};
-            if (filename.find("event-mouse") == std::string::npos ||
-                filename.find("if01") != std::string::npos) {
+            if (filename.find("event") == std::string::npos ||
+                filename.find("if0") != std::string::npos) {
                 continue;
             }
             device_names.push_back(filename);
