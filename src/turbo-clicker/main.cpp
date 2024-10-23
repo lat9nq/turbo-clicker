@@ -270,7 +270,7 @@ int main(int argc, char *argv[]) {
         while ((entry = readdir(dir_stream)) != nullptr) {
             std::string filename{entry->d_name};
             if ((filename.find("event-mouse") == std::string::npos &&
-                 filename.find("event-keyboard") == std::string::npos) ||
+                 filename.find("event-kbd") == std::string::npos) ||
                 filename.find("if0") != std::string::npos) {
                 continue;
             }
