@@ -7,6 +7,8 @@ After finding myself disatisfied with the several options presently available fo
 
 A work-in-progress, but I find myself using it very often. Have fun at your own risk.
 
+User needs to be in the `input` group to use event input devices.
+
 Features:
 - Burst mode limits the number of clicks per use.
 - Can specify rate in milliseconds or clicks per minute.
