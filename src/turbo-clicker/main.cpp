@@ -6,6 +6,7 @@
 #include <argp.h>
 #include <bits/types/error_t.h>
 #include <cerrno>
+#include <error.h>
 #include <csignal>
 #include <cstdio>
 #include <cstring>
@@ -276,8 +277,14 @@ int main(int argc, char *argv[]) {
                 filename.find("if0") != std::string::npos) {
                 continue;
             }
+            int fd = openat(dirfd, entry->d_name, O_RDONLY | O_NONBLOCK);
+            if (fd == -1) {
+                int err = errno;
+                error(0, err, "could not open %s", filename.c_str());
+                continue;
+            }
             device_names.push_back(filename);
-            descriptors.push_back(openat(dirfd, entry->d_name, O_RDONLY | O_NONBLOCK));
+            descriptors.push_back(fd);
         }
         printf("Found %ld device%s\n", descriptors.size(), descriptors.size() != 1 ? "s" : "");
         for (const auto &name : device_names) {
@@ -289,11 +296,15 @@ int main(int argc, char *argv[]) {
             int fd = open(device, O_RDONLY | O_NONBLOCK);
             if (fd == -1) {
                 int err = errno;
-                std::fprintf(stderr, "error %d while trying to open`%s'\n", err, device);
+                std::fprintf(stderr, "error %d while trying to open `%s'\n", err, device);
                 continue;
             }
             descriptors.push_back(fd);
         }
+    }
+    if (descriptors.empty()) {
+        std::printf("There are no devices available, stopping...\n");
+        return 0;
     }
 
     for (u_int32_t i = 0; i < settings.delay.size(); i++) {
