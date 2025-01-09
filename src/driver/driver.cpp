@@ -1,4 +1,5 @@
 #include "driver/driver.h"
+#include <cstdio>
 #include <mutex>
 #include <stop_token>
 #include <unistd.h>
@@ -100,7 +101,6 @@ void Driver::Worker(std::stop_token stoken) {
             }
 
             click = Click(stoken);
-            burst_count++;
         }
 
         usleep(delay);
