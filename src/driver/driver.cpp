@@ -1,8 +1,11 @@
 #include "driver/driver.h"
 #include <cstdio>
+#include <ctime>
 #include <mutex>
 #include <stop_token>
 #include <unistd.h>
+
+constexpr u_int64_t cleanup_delay = 10 * 1000 * 1000; // 10 seconds in microseconds
 
 namespace Driver {
 Driver::Driver(const std::stop_source &stop_) : main_stop{stop_} {
@@ -48,10 +51,17 @@ void Driver::ButtonUp() {
     }
 }
 
+void Driver::Sleep(u_int64_t usec) const {
+    struct timespec ts;
+    ts.tv_sec = 0;
+    ts.tv_nsec = usec * 1000;
+    nanosleep(&ts, nullptr);
+}
+
 std::thread Driver::Click(std::stop_token &stoken) {
     return std::thread([&]() {
         ButtonDown();
-        usleep(hold_time);
+        Sleep(hold_time);
         if (!stoken.stop_requested()) {
             ButtonUp();
         }
@@ -70,7 +80,7 @@ void Driver::CleanUp(std::stop_token stoken) {
     };
     while (!stoken.stop_requested()) {
         do_cleanup();
-        usleep(1000000);
+        Sleep(cleanup_delay);
     }
     do_cleanup();
 }
@@ -103,7 +113,7 @@ void Driver::Worker(std::stop_token stoken) {
             click = Click(stoken);
         }
 
-        usleep(delay);
+        Sleep(delay);
         click.join();
     }
 }

@@ -2,7 +2,6 @@
 
 #include <atomic>
 #include <limits>
-#include <list>
 #include <memory>
 #include <queue>
 #include <stop_token>
@@ -27,6 +26,8 @@ class Driver {
     void PopWorker();
     void Worker(std::stop_token stoken);
     void CleanUp(std::stop_token stoken);
+
+    void Sleep(u_int64_t usec) const;
 
     std::thread Click(std::stop_token &stoken);
 
