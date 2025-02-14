@@ -6,11 +6,11 @@
 #include <argp.h>
 #include <bits/types/error_t.h>
 #include <cerrno>
-#include <error.h>
 #include <csignal>
 #include <cstdio>
 #include <cstring>
 #include <dirent.h>
+#include <error.h>
 #include <fcntl.h>
 #include <functional>
 #include <limits>
@@ -33,6 +33,7 @@ struct Settings {
     int current_hold_delay{0};
 
     std::vector<u_int32_t> burst_length{};
+    std::vector<double> burst_delay{};
     std::vector<double> delay{};
     std::vector<double> hold_delay{};
     std::set<Input::Button> key_binds{};
@@ -46,6 +47,7 @@ constexpr struct {
     u_int32_t burst_length{std::numeric_limits<u_int32_t>::max()};
     double delay{66.666};
     double hold_delay{6.000};
+    double burst_delay{-1};
 } defaults;
 
 void WriteStatus(int status_file_fd, const Settings &settings) {
@@ -131,9 +133,12 @@ void Worker(Input::Device &Input, Driver::Driver &driver, Settings &settings, in
     }
 }
 
-constexpr int cycle_rate_key{1};
-constexpr int cycle_burst_key{2};
-constexpr int cycle_hold_delay_key{3};
+enum {
+    cycle_rate_key = 1,
+    cycle_burst_key,
+    cycle_hold_delay_key,
+    burst_delay_key,
+};
 
 struct HandlerData {
     int status_file_fd;
@@ -171,6 +176,10 @@ error_t Parser(int key, char *arg, struct argp_state *state) {
         std::printf("Bound %s to clicker\n", Input::CanonicalizeEnum(value).c_str());
         break;
     }
+    case burst_delay_key:
+        settings.burst_delay.push_back(atof(arg));
+        std::printf("Set burst delay to %.0f ms\n", settings.burst_delay.back());
+        break;
     case cycle_rate_key: {
         auto value = Input::ToEnum<Input::Button>(arg);
         settings.rate_cycle_binds.insert(value);
@@ -205,6 +214,7 @@ error_t Parser(int key, char *arg, struct argp_state *state) {
 
 constexpr struct argp_option options[] = {
     {"burst", 'b', "count", 0, "Adds a burst configuration (0 = no limit) (default 0)", 0},
+    {"burst-delay", burst_delay_key, "ms", 0, "Enable repeat bursts with the specified delay", 0},
     {"delay", 'd', "ms", 0, "Add a delay between clicks (default 66ms)", 0},
     {"rate", 'r', "cpm", 0, "Add a delay specified in clicks per minute (default 900 cpm)", 0},
     {"key-bind", 'k', "button", 0, "Bind a mouse button to activate clicks (default Middle)", 0},
@@ -227,13 +237,11 @@ constexpr char const *doc =
     "\vAdditional rates and delays can be specified, e.g. \"-r 900 -r 1100\". To make use of "
     "additional rates, a cycle bind must be specified using \"--cycle-rate\".";
 
-constexpr struct argp argp_data {
-    options, Parser, 0, doc, nullptr, nullptr, nullptr
-};
+constexpr struct argp argp_data{options, Parser, 0, doc, nullptr, nullptr, nullptr};
 
 int main(int argc, char *argv[]) {
     std::vector<int> descriptors;
-    struct Settings settings {};
+    struct Settings settings{};
 
     argp_parse(&argp_data, argc, argv, 0, nullptr, &settings);
 
@@ -253,8 +261,13 @@ int main(int argc, char *argv[]) {
     if (settings.key_binds.empty()) {
         settings.key_binds.insert(Input::Button::Middle);
     }
+    if (settings.burst_delay.empty()) {
+        settings.burst_delay.push_back(defaults.burst_delay);
+    }
 
     if (settings.devices.empty()) {
+        // TODO: Move to input/event
+
         // reads all the dev input devices and opens all usable ones
         int dirfd = open("/dev/input/by-id", O_RDONLY);
         if (dirfd == -1) {
@@ -322,9 +335,10 @@ int main(int argc, char *argv[]) {
         Inputs.push_back(std::make_unique<Input::Event>(fd));
     }
 
-    driver->SetDelay(settings.delay.front() * 1000.0);
-    driver->SetHoldTime(settings.hold_delay.front() * 1000.0);
+    driver->SetDelay(settings.delay.front() * 1000);
+    driver->SetHoldTime(settings.hold_delay.front() * 1000);
     driver->SetBurstLength(settings.burst_length.front());
+    driver->SetBurstDelay(settings.burst_delay.front() * 1000);
 
     int status_file_fd{-1};
     if (settings.status_file != nullptr) {
@@ -347,9 +361,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Signal handling
-    struct HandlerData handler_data {
-        status_file_fd, settings.status_file, stop, *driver.get()
-    };
+    struct HandlerData handler_data{status_file_fd, settings.status_file, stop, *driver.get()};
     handler_input = &handler_data;
     std::signal(SIGINT, Handler);
 
