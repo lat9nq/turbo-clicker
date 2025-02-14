@@ -5,7 +5,7 @@
 #include <stop_token>
 #include <unistd.h>
 
-constexpr u_int64_t cleanup_delay = 10 * 1000 * 1000; // 10 seconds in microseconds
+constexpr u_int64_t cleanup_delay{static_cast<u_int64_t>(1e6)}; // 1 second in microseconds
 
 namespace Driver {
 Driver::Driver(const std::stop_source &stop_) : main_stop{stop_} {
@@ -34,6 +34,9 @@ void Driver::SetHoldTime(u_int64_t usec) {
 void Driver::SetBurstLength(u_int32_t length) {
     burst_length = length;
 }
+void Driver::SetBurstDelay(int64_t usec) {
+    burst_delay = usec;
+}
 
 void Driver::ButtonDown() {
     std::scoped_lock lock{button_mutex};
@@ -53,8 +56,9 @@ void Driver::ButtonUp() {
 
 void Driver::Sleep(u_int64_t usec) const {
     struct timespec ts;
-    ts.tv_sec = 0;
-    ts.tv_nsec = usec * 1000;
+    constexpr u_int64_t second = static_cast<int64_t>(1e6);
+    ts.tv_sec = usec / second;
+    ts.tv_nsec = usec % second * 1000;
     nanosleep(&ts, nullptr);
 }
 
@@ -102,18 +106,23 @@ void Driver::Activate() {
 }
 
 void Driver::Worker(std::stop_token stoken) {
-    for (u_int32_t burst_count = 0; burst_count < burst_length; burst_count++) {
+    u_int32_t burst_count{};
+    while (!stoken.stop_requested() && burst_count < burst_length) {
         std::thread click;
         {
             std::scoped_lock lock{active_mutex};
-            if (stoken.stop_requested()) {
-                break;
-            }
 
             click = Click(stoken);
         }
 
-        Sleep(delay);
+        burst_count++;
+        if (burst_count < burst_length) {
+            Sleep(delay);
+        } else if (burst_delay > 0) {
+            burst_count = 0;
+            Sleep(burst_delay);
+        }
+
         click.join();
     }
 }

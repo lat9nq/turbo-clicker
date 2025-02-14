@@ -20,6 +20,7 @@ class Driver {
     void SetDelay(u_int64_t usec);
     void SetHoldTime(u_int64_t usec);
     void SetBurstLength(u_int32_t length);
+    void SetBurstDelay(int64_t usec);
 
   private:
     void Activate();
@@ -53,6 +54,7 @@ class Driver {
     std::atomic<u_int64_t> hold_time{20000};
 
     std::atomic<u_int32_t> burst_length{std::numeric_limits<u_int32_t>::max()};
+    std::atomic<int64_t> burst_delay{-1};
 
     bool down{};
     std::mutex button_mutex;
