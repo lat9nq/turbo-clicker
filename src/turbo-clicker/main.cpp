@@ -32,6 +32,9 @@ struct Settings {
     int current_burst{0};
     int current_hold_delay{0};
 
+    bool toggle{};
+    std::atomic<bool> toggle_on{};
+
     std::vector<u_int32_t> burst_length{};
     std::vector<double> burst_delay{};
     std::vector<double> delay{};
@@ -98,7 +101,12 @@ void Worker(Input::Device &Input, Driver::Driver &driver, Settings &settings, in
     int value{0}; // TODO: Make this an enum
     while (!stoken.stop_requested()) {
         if (settings.key_binds.contains(button)) {
-            driver.Update(value);
+            if (settings.toggle && value) {
+                settings.toggle_on = !settings.toggle_on;
+                driver.Update(static_cast<int>(settings.toggle_on));
+            } else if (!settings.toggle) {
+                driver.Update(value);
+            }
         }
         if (value != 0) {
             if (settings.rate_cycle_binds.contains(button)) {
@@ -176,6 +184,10 @@ error_t Parser(int key, char *arg, struct argp_state *state) {
         std::printf("Bound %s to clicker\n", Input::CanonicalizeEnum(value).c_str());
         break;
     }
+    case 't': {
+        settings.toggle = true;
+        break;
+    }
     case burst_delay_key:
         settings.burst_delay.push_back(atof(arg));
         std::printf("Set burst delay to %.0f ms\n", settings.burst_delay.back());
@@ -220,6 +232,8 @@ constexpr struct argp_option options[] = {
     {"key-bind", 'k', "button", 0, "Bind a mouse button to activate clicks (default Middle)", 0},
     {"hold-delay", 'o', "ms", 0, "Specify the amount of time to hold the click down (default 20ms)",
      0},
+    {"toggle", 't', nullptr, 0,
+     "Activate clicker with a toggle as opposed to hold-press (default Off)", 0},
     {"cycle-rate", cycle_rate_key, "button", 0, "Bind a button to cycle different rates", 1},
     {"cycle-burst", cycle_burst_key, "button", 0, "Bind a button to cycle different burst lengths",
      1},
